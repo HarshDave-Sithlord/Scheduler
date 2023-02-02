@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include <time.h>
 #include "utils.h"
+#include "linklist.h"
+#include "exception_handler.h"
 
 typedef enum {
 	SUNDAY = 0,
@@ -35,7 +37,25 @@ typedef struct{
 	struct schedule_time start_time;
 	struct schedule_time stop_time;
 	uint8_t active_status;
-	uint8_t schedule_day[8];//Can be translated to bitmap
+	//TODO: change the following array to bitmap.
+	uint8_t schedule_day[8];
 } scheduler_handle_t;
+
+typedef void (*addalarm)(struct schedule_time start_time, struct schedule_time end_time, uint8_t schedule_day, struct sl_node_t **alarm_head);
+typedef void (*schedulealarm)(struct tm *tm, struct sl_node_t **alarm_head);
+typedef void (*dispalarm)(struct sl_node_t **alarm_head);
+
+typedef struct{
+	//Data
+	struct sl_node_t *alarm_head;
+	scheduler_handle_t handle;
+	//Functions
+	dispalarm displayAlarm;
+	schedulealarm scheduleAlarm;
+	addalarm addAlarm;
+} Scheduler;
+
+//Expose it to create_obj module.
+bool_t instantiateScheduler(Scheduler *ptr);
 
 #endif /* SCHEDULER_H_ */

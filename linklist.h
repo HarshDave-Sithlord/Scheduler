@@ -1,6 +1,7 @@
 #ifndef GENERAL_PROGRAMS_LINKLIST_H_
 #define GENERAL_PROGRAMS_LINKLIST_H_
 
+#include "exception_handler.h"
 #include "utils.h"
 
 typedef enum{

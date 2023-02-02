@@ -1,9 +1,10 @@
 #include "scheduler.h"
-#include "linklist.h"
 
-static struct sl_node_t **alarm_head = NULL;
+//PRIVATE DATA
 
-void display_alarm(struct sl_node_t *head)
+//PRIVATE FUNCTIONS
+
+static void display_alarm(struct sl_node_t *head)
 {
 	scheduler_handle_t *temp = NULL;
 	while(head)
@@ -18,89 +19,133 @@ void display_alarm(struct sl_node_t *head)
 	}
 }
 
-void init_alarm(void)
+static void init_alarm(struct sl_node_t **alarm_head)
 {
-	alarm_head = SLlist_create(USER_DEFINED);
-	sl_register_display(display_alarm);
-}
-
-void add_alarm(struct schedule_time start_time,
-		struct schedule_time end_time, uint8_t schedule_day)
-{
-	static uint8_t index = 0;
-	scheduler_handle_t *temp =
-				(scheduler_handle_t *)malloc(sizeof(scheduler_handle_t));
-	if(temp)
+	if(alarm_head)
 	{
-		temp->scheduler_index = index++;
-		printf("Inited :: %d\n", temp->scheduler_index);
-		temp->start_time.hour = start_time.hour;
-		temp->start_time.min = start_time.min;
-		temp->stop_time.hour = end_time.hour;
-		temp->stop_time.min = end_time.min;
-		temp->schedule_day[schedule_day] = 1;
-		temp->active_status = ACTIVE;
-
-		SLlist_add_element(alarm_head, temp, sizeof(scheduler_handle_t));
+		*alarm_head = SLlist_create(USER_DEFINED);
+		sl_register_display(display_alarm);
+	}
+	else
+	{
+		exception_handler(__func__, NULL_POINTER_EXCEPTION);
 	}
 }
 
-
-void disp_alarm(void)
+static void add_alarm(struct schedule_time start_time,
+		struct schedule_time end_time, uint8_t schedule_day, struct sl_node_t **alarm_head)
 {
-	display_list(*alarm_head);
+	if(alarm_head)
+	{
+		static uint8_t index = 0;
+		scheduler_handle_t *temp =
+					(scheduler_handle_t *)malloc(sizeof(scheduler_handle_t));
+		if(temp)
+		{
+			temp->scheduler_index = index++;
+			temp->start_time.hour = start_time.hour;
+			temp->start_time.min = start_time.min;
+			temp->stop_time.hour = end_time.hour;
+			temp->stop_time.min = end_time.min;
+			temp->schedule_day[schedule_day] = 1;
+			temp->active_status = ACTIVE;
+			SLlist_add_element(alarm_head, temp, sizeof(scheduler_handle_t));
+		}
+		else
+		{
+			exception_handler(__func__, MEMORY_ALLOCATION_FAIL_EXCEPTION);
+		}
+	}
+	else
+	{
+		exception_handler(__func__, NULL_POINTER_EXCEPTION);
+	}
+}
+
+static void disp_alarm(struct sl_node_t *alarm_head)
+{
+	if(alarm_head)
+		display_list(alarm_head);
+	else
+		exception_handler(__func__, NULL_POINTER_EXCEPTION);
 }
 
 
-void schedule_alarm(struct tm *tm)
+static void schedule_alarm(struct tm *tm, struct sl_node_t **alarm_head)
 {
-	static uint8_t flag = 0;
-	struct sl_node_t *head = *alarm_head;
-	scheduler_handle_t *temp = NULL;
-	while(head)
+	if(alarm_head)
 	{
-		temp = (scheduler_handle_t *)head->data;
-		if(temp->active_status == ACTIVE && flag == 0)
+		static uint8_t flag = 0;
+		struct sl_node_t *head = *alarm_head;
+		scheduler_handle_t *temp = NULL;
+		while(head)
 		{
-			if(temp->schedule_day[tm->tm_wday] == 1
-					&& temp->start_time.hour == tm->tm_hour
-					&& temp->start_time.min == tm->tm_min)
+			temp = (scheduler_handle_t *)head->data;
+			if(temp->active_status == ACTIVE && flag == 0)
 			{
-				printf("Started alarm from Address :: %p\n", temp);
-				temp->active_status = SCHEDULED;
-				flag = 1;
-				break;
+				if(temp->schedule_day[tm->tm_wday] == 1
+						&& temp->start_time.hour == tm->tm_hour
+						&& temp->start_time.min == tm->tm_min)
+				{
+					printf("Started one time alarm from Address :: %p\n", temp);
+					temp->active_status = SCHEDULED;
+					flag = 1;
+					break;
+				}
+				else if(temp->schedule_day[ONE_TIME] == 1
+						&& temp->start_time.hour == tm->tm_hour
+						&& temp->start_time.min == tm->tm_min)
+				{
+					printf("Started one time alarm from Address :: %p\n", temp);
+					temp->active_status = SCHEDULED;
+					flag = 1;
+					break;
+				}
 			}
-			else if(temp->schedule_day[ONE_TIME] == 1
-					&& temp->start_time.hour == tm->tm_hour
-					&& temp->start_time.min == tm->tm_min)
+			else if(temp->active_status == SCHEDULED)
 			{
-				printf("Started one time alarm from Address :: %p\n", temp);
-				temp->active_status = SCHEDULED;
-				flag = 1;
-				break;
+				if(temp->schedule_day[tm->tm_wday] == 1
+						&& temp->stop_time.hour == tm->tm_hour
+						&& temp->stop_time.min == tm->tm_min)
+				{
+					printf("Stopped alarm from Address :: %p\n", temp);
+					flag = 0;
+					temp->active_status = NOT_ACTIVE;
+					break;
+				}
+				else if(temp->schedule_day[ONE_TIME] == 1
+						&& temp->stop_time.hour == tm->tm_hour
+						&& temp->stop_time.min == tm->tm_min)
+				{
+					printf("Stopped one time alarm from Address :: %p %d\n", temp, temp->scheduler_index);
+					flag = 0;
+					break;
+				}
 			}
+			head = head->next;
 		}
-		else if(temp->active_status == SCHEDULED)
-		{
-			if(temp->schedule_day[tm->tm_wday] == 1
-					&& temp->stop_time.hour == tm->tm_hour
-					&& temp->stop_time.min == tm->tm_min)
-			{
-				printf("Stopped alarm from Address :: %p\n", temp);
-				flag = 0;
-				temp->active_status = NOT_ACTIVE;
-				break;
-			}
-			else if(temp->schedule_day[ONE_TIME] == 1
-					&& temp->stop_time.hour == tm->tm_hour
-					&& temp->stop_time.min == tm->tm_min)
-			{
-				printf("Stopped one time alarm from Address :: %p %d\n", temp, temp->scheduler_index);
-				flag = 0;
-				break;
-			}
-		}
-		head = head->next;
 	}
+	else
+	{
+		exception_handler(__func__, NULL_POINTER_EXCEPTION);
+	}
+}
+
+//INSTANTIATE SCHEDULER STRUCTURE
+bool_t instantiateScheduler(Scheduler *ptr)
+{
+	bool_t ret = FAIL;
+	if(ptr)
+	{
+		init_alarm(&ptr->alarm_head);
+		ptr->displayAlarm = disp_alarm;
+		ptr->addAlarm = add_alarm;
+		ptr->scheduleAlarm = schedule_alarm;
+		ret = OK;
+	}
+	else
+	{
+		exception_handler(__func__, NULL_POINTER_EXCEPTION);
+	}
+	return ret;
 }
