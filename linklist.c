@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "linklist.h"
 
 static struct list_t *list_head = NULL;
@@ -89,8 +91,19 @@ void sl_register_display(sl_disp_fptr ptr)
 	{
 		sl_disp[USER_DEFINED] = ptr;
 	}
+	else
+	{
+		exception_handler(__func__, NULL_POINTER_EXCEPTION);
+	}
 }
 
+/**
+ * list_t is strcuture that can hold N list and N datatype.
+ * It is top level linklist, which holds other N linklists
+ * of primitive and non-primitive datatypes.
+ * Here we create a head of control linklist and return address of
+ * pointer which is going to hold sub-linklist of some X datatype
+*/
 struct sl_node_t ** SLlist_create(unsigned char datatype)
 {
 	struct list_t *temp = (struct list_t *)malloc(sizeof(struct list_t));
@@ -109,6 +122,10 @@ struct sl_node_t ** SLlist_create(unsigned char datatype)
 			temp->next = list_head;
 			list_head = temp;
 		}
+	}
+	else
+	{
+		exception_handler(__func__, NULL_POINTER_EXCEPTION);
 	}
 
 	printf("%p and %p\n", &temp->head, temp->head);
@@ -139,6 +156,14 @@ void SLlist_add_element(struct sl_node_t **head, void *data, unsigned int datasi
 				*head = temp;
 			}
 		}
+		else
+		{
+			exception_handler(__func__, MEMORY_ALLOCATION_FAIL_EXCEPTION);
+		}
+	}
+	else
+	{
+		exception_handler(__func__, NULL_POINTER_EXCEPTION);
 	}
 }
 
